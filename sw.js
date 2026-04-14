@@ -1,10 +1,10 @@
-const CACHE = 'desert-archer-v1';
+const CACHE = 'infinity-archer-v1';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png'
+  '/Infinity-Archer/',
+  '/Infinity-Archer/index.html',
+  '/Infinity-Archer/manifest.json',
+  '/Infinity-Archer/icon Small.png',
+  '/Infinity-Archer/icon Large.png'
 ];
 
 // Install — cache all assets

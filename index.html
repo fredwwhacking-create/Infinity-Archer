@@ -1,16 +1,826 @@
-<!-- PWA -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen">
-<meta name="apple-mobile-web-app-title" content="Desert Archer">
-<meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.png">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Desert Archer</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#000;color:#f0e6c8;font-family:'Segoe UI',Arial,sans-serif;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+#hud{width:100%;display:flex;justify-content:space-between;align-items:center;padding:5px 12px;background:linear-gradient(180deg,#2a1a08,#1e1206);border-bottom:1px solid #8b6914;z-index:10;gap:6px;flex-shrink:0;}
+.hud-group{display:flex;gap:6px;align-items:center;}
+.stat{display:flex;align-items:center;gap:4px;background:rgba(0,0,0,0.4);padding:3px 10px;border-radius:20px;border:1px solid #5a4010;}
+.stat label{color:#b8960a;font-size:10px;text-transform:uppercase;letter-spacing:.4px;}
+.stat span{font-weight:700;color:#f0d060;font-size:13px;}
+.stat.power-stat{border-color:#6a40a0;}.stat.power-stat label{color:#a060d0;}.stat.power-stat span{color:#c080f0;}
+#hud-title{font-size:13px;font-weight:700;color:#f0c040;letter-spacing:2px;text-transform:uppercase;white-space:nowrap;}
+#speed-bar{display:flex;align-items:center;gap:4px;background:rgba(0,0,0,0.4);padding:3px 8px;border-radius:20px;border:1px solid #5a4010;}
+#speed-bar label{color:#b8960a;font-size:10px;text-transform:uppercase;letter-spacing:.4px;margin-right:2px;}
+.spd-btn{background:rgba(255,255,255,0.06);border:1px solid #4a3010;color:#c0a040;font-size:10px;font-weight:700;padding:2px 7px;border-radius:12px;cursor:pointer;transition:all .15s;}
+.spd-btn:hover{background:rgba(255,200,50,0.15);border-color:#c0a040;}
+.spd-btn.active{background:#c0a020;color:#000;border-color:#e0c040;}
+#rates-panel{position:absolute;top:44px;left:8px;z-index:15;display:flex;flex-direction:column;gap:4px;pointer-events:none;}
+.rate-pill{display:flex;align-items:center;gap:6px;background:rgba(15,8,2,0.88);border:1px solid #5a4010;border-radius:10px;padding:4px 10px;}
+.rate-pill.power-pill{border-color:#4a2a70;}
+.rp-label{font-size:10px;color:#c09030;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;font-weight:600;}
+.power-pill .rp-label{color:#9050c0;}
+.rp-val{font-size:14px;font-weight:700;color:#ffd040;min-width:44px;text-align:right;}
+.power-pill .rp-val{color:#c080f0;}
+.rp-unit{font-size:10px;color:#907030;}.power-pill .rp-unit{color:#6040a0;}
+.rate-bar-bg{width:60px;height:3px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;}
+.rate-bar{height:100%;border-radius:2px;transition:width .6s;}
+#wave-banner{position:absolute;top:42px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#8b1a1a,#5a0e0e);padding:6px 22px;border-radius:30px;font-size:13px;font-weight:700;letter-spacing:1px;color:#ffddcc;border:1px solid #cc4422;opacity:0;transition:opacity .4s;pointer-events:none;z-index:20;}
+#canvas-wrap{position:relative;flex:1;min-height:0;width:100%;overflow:hidden;}
+canvas{width:100%;height:100%;display:block;}
+#health-strip{width:100%;background:linear-gradient(180deg,#1e1206,#2a1a08);border-top:1px solid #8b6914;border-bottom:1px solid #5a4010;padding:5px 18px;display:flex;align-items:center;gap:12px;flex-shrink:0;}
+#health-strip label{color:#b8960a;font-size:10px;text-transform:uppercase;letter-spacing:.8px;white-space:nowrap;}
+#health-strip-bar-bg{flex:1;height:14px;background:rgba(0,0,0,0.5);border-radius:7px;overflow:hidden;border:1px solid #5a4010;}
+#health-strip-bar{height:100%;border-radius:7px;transition:width .25s,background .3s;position:relative;}
+#health-strip-bar::after{content:'';position:absolute;top:2px;left:4px;right:4px;height:3px;background:rgba(255,255,255,0.18);border-radius:2px;}
+#health-strip-text{font-size:12px;font-weight:700;color:#f0d060;white-space:nowrap;min-width:80px;text-align:right;}
+#upgrade-panel{flex-shrink:0;background:#0c0804;border-top:2px solid #4a3010;display:flex;flex-direction:column;height:38vh;}
+#tab-bar{display:flex;border-bottom:2px solid #4a3010;flex-shrink:0;}
+.tab-btn{flex:1;padding:9px 4px;background:#0c0804;border:none;border-right:1px solid #3a2008;color:#666;font-size:13px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.8px;transition:all .2s;}
+.tab-btn:last-child{border-right:none;}
+.tab-btn.active{background:#1a1008;color:#ffd040;border-bottom:3px solid #ffd040;margin-bottom:-2px;}
+.tab-btn.active.def{color:#40d8f8;border-bottom-color:#40d8f8;}
+.tab-btn.active.eco{color:#40e860;border-bottom-color:#40e860;}
+#upg-multi-bar{display:flex;align-items:center;gap:6px;padding:6px 10px;background:#0a0602;border-bottom:1px solid #3a2808;flex-shrink:0;}
+#upg-multi-bar label{color:#b8960a;font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;}
+.multi-btn{background:rgba(255,255,255,0.05);border:1px solid #4a3010;color:#c0a040;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;cursor:pointer;transition:all .15s;}
+.multi-btn:hover{background:rgba(255,200,50,0.15);border-color:#c0a040;}
+.multi-btn.active{background:#c0a020;color:#000;border-color:#e0c040;}
+.tab-content{display:none;flex:1;overflow:auto;padding:10px;}
+.tab-content.active{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;align-content:start;}
+.upg-card{background:#181008;border:1px solid #4a3010;border-radius:10px;padding:12px 8px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;transition:background .15s,border-color .15s;}
+.upg-card:hover:not(.disabled):not(.maxed){background:#281808;border-color:#c8a030;}
+.upg-card.disabled{opacity:.35;cursor:not-allowed;}
+.upg-card.maxed{background:#221a04;border-color:#ffd040;cursor:not-allowed;}
+.upg-card.def{background:#0c1820;border-color:#1a5070;}
+.upg-card.def:hover:not(.disabled):not(.maxed){background:#182838;border-color:#40b8d8;}
+.upg-card.def.maxed{border-color:#40d8f8;}
+.upg-card.eco{background:#0c1a10;border-color:#1a5030;}
+.upg-card.eco:hover:not(.disabled):not(.maxed){background:#182818;border-color:#40c060;}
+.upg-card.eco.maxed{border-color:#40e860;}
+.uc-icon{font-size:20px;line-height:1;}
+.uc-name{font-size:14px;font-weight:700;color:#fff0c0;line-height:1.2;}
+.upg-card.def .uc-name{color:#c0eeff;}.upg-card.eco .uc-name{color:#b0ffb8;}
+.uc-cost{font-size:12px;font-weight:700;color:#ffd040;line-height:1.3;}
+.upg-card.def .uc-cost{color:#40d8f8;}.upg-card.eco .uc-cost{color:#40e860;}
+.uc-lvl{font-size:12px;color:#b09050;font-weight:600;line-height:1;}
+.upg-card.def .uc-lvl{color:#5098b8;}.upg-card.eco .uc-lvl{color:#50a860;}
+.upg-card.maxed .uc-lvl{color:#ffd040;font-weight:700;}
+.uc-ws{font-size:10px;color:#a070e0;line-height:1;}
+/* Overlays */
+#game-over,#workshop-screen{display:none;position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(8,4,0,0.95);z-index:30;justify-content:center;align-items:center;overflow-y:auto;}
+.panel-box{background:linear-gradient(180deg,#2a1a08,#1a0e04);border:1px solid #8b6914;border-radius:16px;padding:26px 34px;text-align:center;max-width:480px;width:90%;margin:auto;}
+.panel-box h2{font-size:20px;margin-bottom:5px;letter-spacing:2px;text-transform:uppercase;}
+.panel-box .sub{color:#c0a070;font-size:12px;margin-bottom:16px;line-height:1.6;}
+.go-stats-row{display:flex;justify-content:center;gap:16px;margin-bottom:18px;flex-wrap:wrap;}
+.go-stat-box{background:rgba(0,0,0,0.4);border:1px solid #5a4010;border-radius:10px;padding:9px 16px;text-align:center;}
+.go-stat-box .val{font-size:22px;font-weight:700;color:#ffd040;}
+.go-stat-box .lbl{font-size:10px;color:#a08050;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;}
+.go-stat-box.power .val{color:#c080f0;}.go-stat-box.power .lbl{color:#8050a0;}
+.big-btn{border:none;color:#fff;padding:10px 28px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:1px;text-transform:uppercase;margin:5px;}
+.btn-red{background:linear-gradient(180deg,#8b1a1a,#5a0e0e);border:1px solid #cc4422;}.btn-red:hover{background:linear-gradient(180deg,#aa2a2a,#7a1e1e);}
+.btn-purple{background:linear-gradient(180deg,#5a2a8a,#3a1a5a);border:1px solid #9060d0;}.btn-purple:hover{background:linear-gradient(180deg,#7a3aaa,#5a2a7a);}
+#workshop-screen{flex-direction:column;padding:20px 16px;align-items:stretch;}
+#workshop-inner{width:100%;max-width:800px;margin:0 auto;}
+#workshop-inner h2{font-size:20px;color:#d090ff;letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:4px;}
+.ws-sub{font-size:12px;color:#b090d0;text-align:center;margin-bottom:12px;}
+.ws-power-row{display:flex;justify-content:center;align-items:center;gap:10px;background:rgba(80,20,120,0.4);border:2px solid #8050b0;border-radius:20px;padding:7px 24px;margin-bottom:10px;}
+.pw-label{color:#c080f0;font-size:12px;text-transform:uppercase;letter-spacing:.7px;font-weight:600;}
+.pw-val{color:#e0a0ff;font-weight:700;font-size:20px;}
+.ws-multi-bar{display:flex;align-items:center;gap:6px;margin-bottom:14px;}
+.ws-multi-bar label{color:#c080f0;font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;}
+.ws-multi-btn{background:rgba(255,255,255,0.05);border:1px solid #5a3a80;color:#c080f0;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;cursor:pointer;transition:all .15s;}
+.ws-multi-btn:hover{background:rgba(180,100,255,0.15);border-color:#c080f0;}
+.ws-multi-btn.active{background:#8040c0;color:#fff;border-color:#c080f0;}
+.ws-section-title{font-size:12px;font-weight:700;color:#e8c060;text-transform:uppercase;letter-spacing:1px;margin:12px 0 7px 2px;border-left:4px solid #c8a040;padding-left:10px;}
+.ws-section-title.def{color:#60c8e8;border-color:#40a0c8;}.ws-section-title.eco{color:#60e880;border-color:#40c860;}
+.ws-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:6px;}
+.ws-card{background:#1e1430;border:2px solid #5a3a80;border-radius:12px;padding:14px 10px;text-align:center;cursor:pointer;transition:all .2s;}
+.ws-card:hover:not(.ws-maxed):not(.ws-cant){border-color:#c080f0;transform:translateY(-2px);background:#2a1a40;}
+.ws-card.ws-cant{opacity:.4;cursor:not-allowed;}.ws-card.ws-maxed{border-color:#ffd040;cursor:default;}
+.ws-card.def-card{background:#0e1e32;border-color:#2a6090;}.ws-card.def-card:hover:not(.ws-maxed):not(.ws-cant){border-color:#60c0e8;background:#162840;}
+.ws-card.eco{background:#0e2018;border-color:#2a6840;}.ws-card.eco:hover:not(.ws-maxed):not(.ws-cant){border-color:#60e070;background:#162a1e;}
+.wc-icon{font-size:24px;margin-bottom:5px;display:block;}
+.wc-name{font-size:13px;font-weight:700;color:#e8d0ff;margin-bottom:3px;}
+.ws-card.def-card .wc-name{color:#90d8f8;}.ws-card.eco .wc-name{color:#90f8a8;}
+.wc-desc{font-size:11px;color:#c0a0e0;margin-bottom:6px;line-height:1.4;}
+.ws-card.def-card .wc-desc{color:#70b8d8;}.ws-card.eco .wc-desc{color:#70d890;}
+.wc-effect{font-size:13px;color:#fff;font-weight:700;margin-bottom:7px;background:rgba(0,0,0,0.4);padding:3px 10px;border-radius:6px;display:inline-block;}
+.wc-cost{font-size:13px;color:#e0a0ff;font-weight:700;display:block;margin-bottom:2px;}
+.ws-card.def-card .wc-cost{color:#60c8e8;}.ws-card.eco .wc-cost{color:#60e878;}
+.wc-lvl{font-size:11px;color:#9070c0;font-weight:600;}
+.ws-card.def-card .wc-lvl{color:#4090b8;}.ws-card.eco .wc-lvl{color:#408858;}
+.ws-card.ws-maxed .wc-lvl{color:#ffd040;font-weight:700;}
+.ws-btn-row{display:flex;justify-content:center;gap:12px;margin-top:16px;}
+</style>
+     <!-- PWA — paste here -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen">
+    <meta name="apple-mobile-web-app-title" content="Infinity Archer">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <script>
+      if('serviceWorker' in navigator){
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/Infinity-Archer/sw.js');
+        });
+      }
+    </script>
+</head>
+<body>
+<div id="hud">
+  <div class="hud-group">
+    <div class="stat"><label>Wave</label><span id="hud-wave">1</span></div>
+    <div class="stat"><label>HP</label><span id="hud-hp">200</span></div>
+  </div>
+  <div id="hud-title">⚔ Desert Archer ⚔</div>
+  <div class="hud-group">
+    <div class="stat"><label>Gold</label><span id="hud-coins">0</span></div>
+    <div class="stat"><label>Score</label><span id="hud-score">0</span></div>
+    <div class="stat power-stat"><label>⚗ Power</label><span id="hud-power">0</span></div>
+    <div id="speed-bar">
+      <label>Speed</label>
+      <button class="spd-btn" onclick="setSpeed(0)">⏸</button>
+      <button class="spd-btn active" onclick="setSpeed(1)">×1</button>
+      <button class="spd-btn" onclick="setSpeed(2)">×2</button>
+      <button class="spd-btn" onclick="setSpeed(5)">×5</button>
+      <button class="spd-btn" onclick="setSpeed(10)">×10</button>
+      <button class="spd-btn" onclick="setSpeed(50)">×50</button>
+      <button class="spd-btn" onclick="setSpeed(100)">×100</button>
+    </div>
+  </div>
+</div>
+<div id="rates-panel">
+  <div class="rate-pill"><span class="rp-label">Gold/min</span><span class="rp-val" id="rate-gold">0</span><span class="rp-unit">g/m</span><div class="rate-bar-bg"><div class="rate-bar" id="rate-gold-bar" style="width:0%;background:#ffd040"></div></div></div>
+  <div class="rate-pill power-pill"><span class="rp-label">Power/min</span><span class="rp-val" id="rate-power">0</span><span class="rp-unit">p/m</span><div class="rate-bar-bg"><div class="rate-bar" id="rate-power-bar" style="width:0%;background:#c080f0"></div></div></div>
+</div>
+<div id="wave-banner">Wave 1</div>
+<div id="canvas-wrap"><canvas id="c"></canvas></div>
+<div id="health-strip">
+  <label>🏹 Tower Health</label>
+  <div id="health-strip-bar-bg"><div id="health-strip-bar" style="width:100%;background:#2ecc71"></div></div>
+  <div id="health-strip-text">200 / 200</div>
+</div>
+<div id="upgrade-panel">
+  <div id="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('combat')" id="tab-combat">⚔ Combat</button>
+    <button class="tab-btn def"    onclick="switchTab('defense')" id="tab-defense">🛡 Defense</button>
+    <button class="tab-btn eco"    onclick="switchTab('eco')" id="tab-eco">💰 Economy</button>
+  </div>
+  <div id="upg-multi-bar">
+    <label>Buy:</label>
+    <button class="multi-btn active" onclick="setUpgMulti(1)">×1</button>
+    <button class="multi-btn" onclick="setUpgMulti(5)">×5</button>
+    <button class="multi-btn" onclick="setUpgMulti(10)">×10</button>
+    <button class="multi-btn" onclick="setUpgMulti(100)">×100</button>
+    <button class="multi-btn" onclick="setUpgMulti('max')">Max</button>
+  </div>
+  <div class="tab-content active" id="tab-combat-content"></div>
+  <div class="tab-content"        id="tab-defense-content"></div>
+  <div class="tab-content"        id="tab-eco-content"></div>
+</div>
+<div id="game-over">
+  <div class="panel-box">
+    <h2 style="color:#e86030;">⚔ Tower Fallen ⚔</h2>
+    <p class="sub">The desert reclaims what the weak cannot hold.</p>
+    <div class="go-stats-row">
+      <div class="go-stat-box"><div class="val" id="go-waves">0</div><div class="lbl">Waves</div></div>
+      <div class="go-stat-box"><div class="val" id="go-score">0</div><div class="lbl">Score</div></div>
+      <div class="go-stat-box power"><div class="val" id="go-power">0</div><div class="lbl">⚗ Power</div></div>
+    </div>
+    <button class="big-btn btn-purple" onclick="openWorkshop()">⚗ Enter Workshop</button>
+    <button class="big-btn btn-red"    onclick="restartGame()">▶ Rise Again</button>
+  </div>
+</div>
+<div id="workshop-screen">
+  <div id="workshop-inner">
+    <h2>⚗ The Workshop</h2>
+    <p class="ws-sub">Permanent upgrades. Workshop level = your starting level each run. In-run costs always reset to base price.</p>
+    <div class="ws-power-row"><span class="pw-label">⚗ Power:</span><span class="pw-val" id="ws-power-display">0</span></div>
+    <div class="ws-multi-bar">
+      <label>Buy:</label>
+      <button class="ws-multi-btn active" onclick="setWsMulti(1)">×1</button>
+      <button class="ws-multi-btn" onclick="setWsMulti(5)">×5</button>
+      <button class="ws-multi-btn" onclick="setWsMulti(10)">×10</button>
+      <button class="ws-multi-btn" onclick="setWsMulti(100)">×100</button>
+      <button class="ws-multi-btn" onclick="setWsMulti('max')">Max</button>
+    </div>
+    <div class="ws-section-title">⚔ Combat</div><div class="ws-grid" id="ws-grid-combat"></div>
+    <div class="ws-section-title def">🛡 Defense</div><div class="ws-grid" id="ws-grid-defense"></div>
+    <div class="ws-section-title eco">💰 Economy</div><div class="ws-grid" id="ws-grid-eco"></div>
+    <div class="ws-btn-row">
+      <button class="big-btn btn-red" onclick="closeWorkshop()">▶ Rise Again</button>
+      <button class="big-btn" style="background:linear-gradient(180deg,#3a1a1a,#1a0808);border:1px solid #662222;font-size:11px;padding:8px 16px;" onclick="resetSave()">🗑 Reset Save</button>
+    </div>
+  </div>
+</div>
 
-<!-- Register service worker -->
 <script>
-  if('serviceWorker' in navigator){
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js');
+// ===================== CANVAS =====================
+const canvas=document.getElementById('c'),ctx=canvas.getContext('2d'),wrap=document.getElementById('canvas-wrap');
+function resize(){canvas.width=wrap.clientWidth;canvas.height=wrap.clientHeight;}
+resize();window.addEventListener('resize',resize);
+
+// ===================== CONSTANTS =====================
+const WS_MAX=100, MAX_LEVEL=100;
+const BASE_COSTS={damage:50,firerate:60,range:70,multishot:120,maxhp:60,armor:75,regen:90,thorns:80,goldkill:40,powerkill:80,waveBonus:55};
+const UPGRADE_SCALES={damage:1.5,firerate:1.5,range:1.5,multishot:2.0,maxhp:1.45,armor:1.5,regen:1.5,thorns:1.5,goldkill:1.45,powerkill:1.5,waveBonus:1.45};
+
+// ===================== COST HELPERS =====================
+function costForLevel(key,p){return Math.ceil(BASE_COSTS[key]*Math.pow(UPGRADE_SCALES[key],p||0));}
+function wsLevel(key){return persistent.wsLevels[key]||0;}
+
+function affordableCount(type,maxCount){
+  let count=0,coins=state.coins,purchases=state.purchases[type],lvl=state.upgrades[type];
+  const cap=maxCount==='max'?MAX_LEVEL:maxCount;
+  while(count<cap&&lvl<MAX_LEVEL){const c=costForLevel(type,purchases);if(coins<c)break;coins-=c;purchases++;lvl++;count++;}
+  return count;
+}
+function wsAffordableCount(key,maxCount){
+  const def=[...workshopCombat,...workshopDefense,...workshopEco].find(d=>d.key===key);
+  let count=0,power=persistent.power,lvl=wsLevel(key),c=persistent.wsCosts[key];
+  const cap=maxCount==='max'?WS_MAX:maxCount;
+  while(count<cap&&lvl<WS_MAX){if(power<c)break;power-=c;c=Math.ceil(c*def.costScale);lvl++;count++;}
+  return count;
+}
+
+// ===================== SAVE / LOAD =====================
+const SAVE_KEY='desert_archer_save';
+function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(persistent));}catch(e){}}
+function loadGame(){
+  try{
+    const raw=localStorage.getItem(SAVE_KEY);
+    if(raw){
+      const d=JSON.parse(raw);
+      persistent.power=d.power??0;
+      for(const k of Object.keys(persistent.wsLevels))persistent.wsLevels[k]=d.wsLevels?.[k]??0;
+      for(const k of Object.keys(persistent.wsCosts))persistent.wsCosts[k]=d.wsCosts?.[k]??persistent.wsCosts[k];
+      showToast('Save loaded ✓');
+    }
+  }catch(e){}
+}
+function resetSave(){
+  if(!confirm('Reset ALL workshop progress and Power?'))return;
+  localStorage.removeItem(SAVE_KEY);
+  persistent={power:0,
+    wsLevels:{damage:0,firerate:0,range:0,multishot:0,maxhp:0,armor:0,regen:0,thorns:0,goldkill:0,powerkill:0,waveBonus:0},
+    wsCosts:{damage:20,firerate:20,range:20,multishot:30,maxhp:20,armor:25,regen:30,thorns:30,goldkill:18,powerkill:35,waveBonus:22}};
+  showToast('Save reset.');updateHUD();
+}
+function showToast(msg){
+  let t=document.getElementById('toast');
+  if(!t){t=document.createElement('div');t.id='toast';t.style.cssText='position:fixed;bottom:6px;left:50%;transform:translateX(-50%);background:rgba(30,20,8,.97);border:1px solid #8b6914;color:#f0d060;font-size:12px;padding:6px 18px;border-radius:20px;z-index:99;pointer-events:none;transition:opacity .4s;';document.body.appendChild(t);}
+  t.textContent=msg;t.style.opacity=1;clearTimeout(t._to);t._to=setTimeout(()=>t.style.opacity=0,2000);
+}
+
+// ===================== PERSISTENT DATA =====================
+let persistent={power:0,
+  wsLevels:{damage:0,firerate:0,range:0,multishot:0,maxhp:0,armor:0,regen:0,thorns:0,goldkill:0,powerkill:0,waveBonus:0},
+  wsCosts:{damage:20,firerate:20,range:20,multishot:30,maxhp:20,armor:25,regen:30,thorns:30,goldkill:18,powerkill:35,waveBonus:22}};
+
+const workshopCombat=[
+  {key:'damage',   icon:'⚔️',name:'Forged Blades',desc:'Perm floor for Damage',  costScale:1.4,cat:'combat'},
+  {key:'firerate', icon:'🏹',name:"Bowyer's Art", desc:'Perm floor for Fire Rate',costScale:1.4,cat:'combat'},
+  {key:'range',    icon:'🎯',name:'Eagle Eye',     desc:'Perm floor for Range',   costScale:1.4,cat:'combat'},
+  {key:'multishot',icon:'💥',name:'Twin Nocks',    desc:'Perm floor for Multishot',costScale:1.5,cat:'combat'},
+];
+const workshopDefense=[
+  {key:'maxhp',icon:'❤️',name:'Fortified Tower',desc:'Perm floor for Max HP',  costScale:1.4, cat:'defense'},
+  {key:'armor',icon:'🛡️',name:'Stone Plating',  desc:'Perm floor for Armor',   costScale:1.45,cat:'defense'},
+  {key:'regen',icon:'💚',name:'Life Crystal',   desc:'Perm floor for HP Regen',costScale:1.5, cat:'defense'},
+  {key:'thorns',icon:'🔥',name:'Blue Flame',    desc:'Perm floor for Blue Flame',costScale:1.5,cat:'defense'},
+];
+const workshopEco=[
+  {key:'goldkill', icon:'🪙',name:'Bounty Hunter',desc:'Perm floor for Gold/Kill', costScale:1.4, cat:'eco'},
+  {key:'powerkill',icon:'⚗', name:'Soul Harvest', desc:'Perm floor for Power/Kill',costScale:1.5, cat:'eco'},
+  {key:'waveBonus',icon:'🌊',name:"Warlord's Tax",desc:'Perm floor for Wave Bonus',costScale:1.45,cat:'eco'},
+];
+
+const upgradeDefs={
+  combat:[{key:'damage',icon:'⚔️',name:'Damage',cls:''},{key:'firerate',icon:'🏹',name:'Fire Rate',cls:''},{key:'range',icon:'🎯',name:'Range',cls:''},{key:'multishot',icon:'💥',name:'Multishot',cls:''}],
+  defense:[{key:'maxhp',icon:'❤️',name:'Max HP',cls:'def'},{key:'armor',icon:'🛡️',name:'Armor',cls:'def'},{key:'regen',icon:'💚',name:'HP Regen',cls:'def'},{key:'thorns',icon:'🔥',name:'Blue Flame',cls:'def'}],
+  eco:[{key:'goldkill',icon:'🪙',name:'Gold/Kill',cls:'eco'},{key:'powerkill',icon:'⚗',name:'Power/Kill',cls:'eco'},{key:'waveBonus',icon:'🌊',name:'Wave Bonus',cls:'eco'}]
+};
+
+// ===================== SPEED & MULTIPLIERS =====================
+let gameSpeed=1, upgMulti=1, wsMulti=1;
+
+function setSpeed(s){
+  gameSpeed=s;
+  document.querySelectorAll('.spd-btn').forEach(b=>b.classList.remove('active'));
+  const labels={0:'⏸',1:'×1',2:'×2',5:'×5',10:'×10',50:'×50',100:'×100'};
+  document.querySelectorAll('.spd-btn').forEach(b=>{if(b.textContent===(labels[s]||''))b.classList.add('active');});
+}
+function setUpgMulti(v){
+  upgMulti=v;
+  document.querySelectorAll('.multi-btn').forEach(b=>{
+    b.classList.toggle('active',v==='max'?b.textContent==='Max':b.textContent==='×'+v);
+  });
+  updateUpgradeButtons();
+}
+function setWsMulti(v){
+  wsMulti=v;
+  document.querySelectorAll('.ws-multi-btn').forEach(b=>{
+    b.classList.toggle('active',v==='max'?b.textContent==='Max':b.textContent==='×'+v);
+  });
+  renderWorkshop();
+}
+
+// ===================== DERIVED STATS =====================
+function getArmorMult(){return Math.max(0.2,1-(state.upgrades.armor-1)*0.04);}
+function getRegenAmount(){return(state.upgrades.regen-1)*3;}
+// Thorns: % of enemy maxHp reflected per hit. Lv1=0%, Lv100=100%
+function getThornsPercent(){return(state.upgrades.thorns-1)/99;}
+function getDamage(){return 15+(state.upgrades.damage-1)*8;}
+function getFireRate(){return Math.max(6,30-(state.upgrades.firerate-1)*4);}
+function getRange(){return 120+(state.upgrades.range-1)*20;}
+function getMultishot(){return state.upgrades.multishot;}
+function getGoldPerKill(e){return e.reward+(state.upgrades.goldkill-1)*2;}
+function getPowerPerKill(e){const b=(state.upgrades.powerkill-1)*0.5;return e.type==='heavy'?(e.powerReward+b*2):(e.powerReward+b);}
+function getWaveBonus(){return 10+state.wave*2+(state.upgrades.waveBonus-1)*10;}
+
+// ===================== RATE TRACKING =====================
+let rateTracker={goldLog:[],powerLog:[],startTime:Date.now(),peakGpm:1,peakPpm:0.1};
+function logGold(v){rateTracker.goldLog.push({t:Date.now(),v});}
+function logPower(v){rateTracker.powerLog.push({t:Date.now(),v});}
+function calcRate(log){
+  const now=Date.now(),cut=now-60000;
+  while(log.length&&log[0].t<cut)log.shift();
+  const el=Math.min((now-rateTracker.startTime)/1000,60);
+  if(el<2)return 0;
+  return log.reduce((a,b)=>a+b.v,0)/(el/60);
+}
+let rateTimer=0;
+function updateRates(){
+  if(++rateTimer<30)return;rateTimer=0;
+  const gpm=Math.round(calcRate(rateTracker.goldLog)),ppm=calcRate(rateTracker.powerLog);
+  document.getElementById('rate-gold').textContent=gpm;
+  document.getElementById('rate-power').textContent=ppm.toFixed(1);
+  rateTracker.peakGpm=Math.max(rateTracker.peakGpm,gpm||1);
+  rateTracker.peakPpm=Math.max(rateTracker.peakPpm,ppm||0.1);
+  document.getElementById('rate-gold-bar').style.width=Math.min(100,gpm/rateTracker.peakGpm*100)+'%';
+  document.getElementById('rate-power-bar').style.width=Math.min(100,ppm/rateTracker.peakPpm*100)+'%';
+}
+
+// ===================== STATE =====================
+let state={};
+function initState(){
+  const ups={},purch={},costs={};
+  for(const k of Object.keys(BASE_COSTS)){ups[k]=Math.max(1,wsLevel(k));purch[k]=0;costs[k]=costForLevel(k,0);}
+  const maxHp=200+(ups.maxhp-1)*25;
+  state={wave:1,coins:0,score:0,powerEarned:0,
+    tower:{x:0,y:0,hp:maxHp,maxHp:maxHp,size:28},
+    bullets:[],enemies:[],particles:[],regenParticles:[],flameParticles:[],
+    waveActive:false,waveEnemiesLeft:0,spawnTimer:0,spawnQueue:[],
+    betweenWave:false,betweenTimer:0,gameOver:false,
+    upgrades:ups,purchases:purch,upgradeCosts:costs,
+    shootTimer:0,_lastAim:0,regenTimer:0,regenCooldown:600,regenAnim:0,
+    flameT:0};
+  rateTracker={goldLog:[],powerLog:[],startTime:Date.now(),peakGpm:1,peakPpm:0.1};
+}
+
+// ===================== UI =====================
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.getElementById('tab-'+tab+'-content').classList.add('active');
+}
+function buildUpgradeTabs(){
+  for(const[cat,defs]of Object.entries(upgradeDefs)){
+    const container=document.getElementById('tab-'+cat+'-content');
+    container.innerHTML='';
+    for(const def of defs){
+      const card=document.createElement('div');
+      card.className='upg-card '+def.cls;card.id='upg-card-'+def.key;card.onclick=()=>upgrade(def.key);
+      card.innerHTML=`<span class="uc-icon">${def.icon}</span><span class="uc-name">${def.name}</span><span class="uc-cost" id="cost-${def.key}">-</span><span class="uc-lvl" id="lvl-${def.key}">-</span><span class="uc-ws" id="wsf-${def.key}"></span>`;
+      container.appendChild(card);
+    }
+  }
+}
+
+function upgrade(type){
+  if(state.gameOver)return;
+  const times=affordableCount(type,upgMulti);
+  if(times===0)return;
+  for(let i=0;i<times;i++){
+    if(state.upgrades[type]>=MAX_LEVEL||state.coins<state.upgradeCosts[type])break;
+    state.coins-=state.upgradeCosts[type];
+    state.upgrades[type]++;state.purchases[type]++;
+    state.upgradeCosts[type]=costForLevel(type,state.purchases[type]);
+    if(type==='maxhp'){const nm=200+(state.upgrades.maxhp-1)*25,added=nm-state.tower.maxHp;state.tower.maxHp=nm;state.tower.hp=Math.min(nm,state.tower.hp+added);}
+  }
+  updateHUD();updateUpgradeButtons();
+}
+
+function updateUpgradeButtons(){
+  for(const k of Object.keys(BASE_COSTS)){
+    const lvl=state.upgrades[k],maxed=lvl>=MAX_LEVEL,ws=wsLevel(k);
+    const card=document.getElementById('upg-card-'+k);if(!card)continue;
+    const ce=document.getElementById('cost-'+k),le=document.getElementById('lvl-'+k),we=document.getElementById('wsf-'+k);
+    if(maxed){
+      if(ce)ce.textContent='MAX';if(le)le.textContent='✦ MAX ✦';
+    } else {
+      const canBuy=affordableCount(k,upgMulti);
+      const label=upgMulti==='max'?'Max':'×'+upgMulti;
+      if(ce)ce.textContent=state.upgradeCosts[k]+'g  ['+label+': '+canBuy+']';
+      if(le)le.textContent='Lv '+lvl+'/100';
+    }
+    if(we)we.textContent=ws>0?'⚗ ws:'+ws:'';
+    card.classList.toggle('maxed',maxed);
+    card.classList.toggle('disabled',!maxed&&affordableCount(k,1)===0);
+  }
+}
+
+function updateHUD(){
+  document.getElementById('hud-wave').textContent=state.wave;
+  document.getElementById('hud-hp').textContent=Math.max(0,Math.ceil(state.tower.hp));
+  document.getElementById('hud-coins').textContent=state.coins;
+  document.getElementById('hud-score').textContent=state.score;
+  document.getElementById('hud-power').textContent=persistent.power;
+  const ratio=Math.max(0,state.tower.hp/state.tower.maxHp);
+  const bar=document.getElementById('health-strip-bar');
+  bar.style.width=(ratio*100)+'%';
+  bar.style.background=ratio>0.5?'#2ecc71':ratio>0.25?'#e0a020':'#cc3322';
+  document.getElementById('health-strip-text').textContent=Math.max(0,Math.ceil(state.tower.hp))+' / '+state.tower.maxHp;
+  updateUpgradeButtons();
+}
+
+let bannerTO;
+function showBanner(txt){const b=document.getElementById('wave-banner');b.textContent=txt;b.style.opacity=1;clearTimeout(bannerTO);bannerTO=setTimeout(()=>b.style.opacity=0,2200);}
+
+// ===================== WORKSHOP =====================
+function renderWorkshop(){
+  document.getElementById('ws-power-display').textContent=persistent.power;
+  renderWsGrid('ws-grid-combat',workshopCombat);
+  renderWsGrid('ws-grid-defense',workshopDefense);
+  renderWsGrid('ws-grid-eco',workshopEco);
+}
+function renderWsGrid(gridId,defs){
+  const grid=document.getElementById(gridId);grid.innerHTML='';
+  for(const def of defs){
+    const lvl=wsLevel(def.key),cost=persistent.wsCosts[def.key],maxed=lvl>=WS_MAX,cant=persistent.power<cost&&!maxed;
+    const canBuy=wsAffordableCount(def.key,wsMulti);
+    const label=wsMulti==='max'?'Max':'×'+wsMulti;
+    const card=document.createElement('div');
+    const cls=def.cat==='eco'?' eco':def.cat==='defense'?' def-card':'';
+    card.className='ws-card'+cls+(maxed?' ws-maxed':cant?' ws-cant':'');
+    card.innerHTML=`<span class="wc-icon">${def.icon}</span>
+      <div class="wc-name">${def.name}</div>
+      <div class="wc-desc">${def.desc}</div>
+      <div class="wc-effect">Starts at Lv <strong>${lvl}</strong>/100</div>
+      <div class="wc-cost">${maxed?'—':cost+' ⚗  ['+label+': '+canBuy+']'}</div>
+      <div class="wc-lvl">${maxed?'✦ MAX ✦':'Lv '+lvl+' / '+WS_MAX}</div>`;
+    if(!maxed&&canBuy>0)card.onclick=()=>buyWorkshop(def.key);
+    grid.appendChild(card);
+  }
+}
+function buyWorkshop(key){
+  const all=[...workshopCombat,...workshopDefense,...workshopEco],def=all.find(d=>d.key===key);
+  const times=wsAffordableCount(key,wsMulti);
+  if(times===0)return;
+  for(let i=0;i<times;i++){
+    const cost=persistent.wsCosts[key];
+    if(persistent.power<cost||wsLevel(key)>=WS_MAX)break;
+    persistent.power-=cost;persistent.wsLevels[key]=wsLevel(key)+1;persistent.wsCosts[key]=Math.ceil(cost*def.costScale);
+  }
+  saveGame();renderWorkshop();updateHUD();
+}
+function openWorkshop(){document.getElementById('game-over').style.display='none';renderWorkshop();document.getElementById('workshop-screen').style.display='flex';}
+function closeWorkshop(){document.getElementById('workshop-screen').style.display='none';restartGame();}
+function restartGame(){
+  document.getElementById('game-over').style.display='none';
+  document.getElementById('workshop-screen').style.display='none';
+  initState();state.betweenWave=true;state.betweenTimer=60;
+  updateHUD();updateUpgradeButtons();
+}
+
+// ===================== ENEMIES =====================
+function spawnEnemy(type){
+  const cx=canvas.width/2,cy=canvas.height/2,side=Math.floor(Math.random()*4);
+  let x,y;const pad=30;
+  if(side===0){x=Math.random()*canvas.width;y=-pad;}
+  else if(side===1){x=canvas.width+pad;y=Math.random()*canvas.height;}
+  else if(side===2){x=Math.random()*canvas.width;y=canvas.height+pad;}
+  else{x=-pad;y=Math.random()*canvas.height;}
+  const w=state.wave;
+  if(type==='heavy'){
+    const hp=(10+w*5)*2;
+    state.enemies.push({x,y,hp,maxHp:hp,speed:(0.5+w*0.05)*(2/3),reward:5+Math.floor(w*0.5),powerReward:2+Math.floor(w*0.3),
+      type:'heavy',size:20,angle:0,animT:0,damageMult:2/3,
+      attackSpeed:0.5,attackTimer:0,attacking:false});
+  } else {
+    const hp=10+w*5;
+    state.enemies.push({x,y,hp,maxHp:hp,speed:0.5+w*0.05,reward:5+Math.floor(w*0.5),powerReward:0,
+      type:'basic',size:10,angle:0,animT:0,damageMult:1,
+      attackSpeed:1,attackTimer:0,attacking:false});
+  }
+}
+function buildSpawnQueue(total,wave){const q=[];for(let i=0;i<total;i++)q.push(Math.random()<Math.min(0.4,wave*0.03)?'heavy':'basic');return q;}
+function startWave(){
+  state.waveActive=true;state.betweenWave=false;
+  const total=4+Math.floor(state.wave*1.2);
+  state.waveEnemiesLeft=total;state.spawnQueue=buildSpawnQueue(total,state.wave);
+  state.spawnTimer=0;showBanner('Wave '+state.wave+' — Incoming!');updateHUD();
+}
+function shootAt(t){
+  const tx=canvas.width/2,ty=canvas.height/2,shots=getMultishot(),ab=Math.atan2(t.y-ty,t.x-tx);
+  for(let i=0;i<shots;i++){const a=ab+(i-(shots-1)/2)*0.12;state.bullets.push({x:tx,y:ty,vx:Math.cos(a)*8,vy:Math.sin(a)*8,dmg:getDamage()/shots,life:70,angle:a});}
+}
+function findTarget(){
+  const cx=canvas.width/2,cy=canvas.height/2,range=getRange();
+  let best=null,bestD=Infinity;
+  for(const e of state.enemies){const d=Math.hypot(e.x-cx,e.y-cy);if(d<range&&d<bestD){best=e;bestD=d;}}
+  return best;
+}
+function spawnParticles(x,y,color,n=6,sz=2){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=1+Math.random()*2.5;state.particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:20+Math.random()*15,color,size:sz+Math.random()*2});}}
+
+function spawnFlameParticles(x,y,n=8){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2, s=0.5+Math.random()*2;
+    const colors=['#1060ff','#20a0ff','#60d0ff','#80e8ff','#ffffff'];
+    state.flameParticles.push({
+      x:x+(Math.random()-0.5)*8, y:y+(Math.random()-0.5)*8,
+      vx:Math.cos(a)*s, vy:Math.sin(a)*s-1.5,
+      life:25+Math.random()*20, maxLife:45,
+      color:colors[Math.floor(Math.random()*colors.length)],
+      size:2+Math.random()*3
     });
   }
+}
+
+function updateFlameParticles(){
+  for(const p of state.flameParticles){p.life--;p.x+=p.vx;p.y+=p.vy;p.vy-=0.05;}
+  state.flameParticles=state.flameParticles.filter(p=>p.life>0);
+  // tick burn timers and emit continuous flame from burning enemies
+  for(const e of state.enemies){
+    if(e.burning&&e.burnTimer>0){
+      e.burnTimer--;
+      if(Math.random()<0.4)spawnFlameParticles(e.x,e.y,3);
+      if(e.burnTimer<=0)e.burning=false;
+    }
+  }
+}
+
+function drawFlameParticles(){
+  for(const p of state.flameParticles){
+    const alpha=p.life/p.maxLife;
+    ctx.globalAlpha=alpha;
+    ctx.fillStyle=p.color;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.size*(0.4+alpha*0.6),0,Math.PI*2);ctx.fill();
+    // glow
+    ctx.globalAlpha=alpha*0.25;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.size*2,0,Math.PI*2);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+
+// Animated blue flame ring around the archer
+function drawArcherFlame(cx,cy,t){
+  const thorns=getThornsPercent();
+  if(thorns<=0)return;
+  const intensity=thorns; // 0..1
+  const numFlames=Math.floor(6+intensity*10);
+  const baseR=20;
+  for(let i=0;i<numFlames;i++){
+    const angle=(i/numFlames)*Math.PI*2+t*0.04;
+    const wobble=Math.sin(t*0.12+i*1.3)*3;
+    const r=baseR+wobble;
+    const fx=cx+Math.cos(angle)*r, fy=cy+Math.sin(angle)*r;
+    const sz=2+intensity*3+Math.sin(t*0.15+i)*1.5;
+    const alpha=0.6+intensity*0.4;
+    const colors=['#1060ff','#2080ff','#40b0ff','#80d8ff'];
+    ctx.globalAlpha=alpha*(0.7+Math.sin(t*0.1+i)*0.3);
+    ctx.fillStyle=colors[i%colors.length];
+    ctx.beginPath();ctx.arc(fx,fy,sz,0,Math.PI*2);ctx.fill();
+    // glow
+    ctx.globalAlpha=alpha*0.15;
+    ctx.beginPath();ctx.arc(fx,fy,sz*3,0,Math.PI*2);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+function triggerRegenAnim(cx,cy){for(let i=0;i<18;i++){const a=(i/18)*Math.PI*2,sp=1.5+Math.random()*2;state.regenParticles.push({x:cx+Math.cos(a)*8,y:cy+Math.sin(a)*8,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:50,maxLife:50,color:Math.random()>0.5?'#40ff80':'#80ffb0',size:2+Math.random()*3,phase:'out'});}}
+function updateRegenParticles(){
+  for(const p of state.regenParticles){p.life--;if(p.life<25&&p.phase==='out'){p.vx*=-0.4;p.vy*=-0.4;p.phase='in';}p.x+=p.vx;p.y+=p.vy;p.vx*=0.95;p.vy*=0.95;}
+  state.regenParticles=state.regenParticles.filter(p=>p.life>0);
+}
+
+// ===================== UPDATE =====================
+function update(){
+  if(state.gameOver)return;
+  const cx=canvas.width/2,cy=canvas.height/2;
+  state.tower.x=cx;state.tower.y=cy;
+  if(state.betweenWave){state.betweenTimer--;if(state.betweenTimer<=0)startWave();return;}
+  if(state.waveActive&&state.waveEnemiesLeft>0){
+    state.spawnTimer++;
+    if(state.spawnTimer>=Math.max(20,90-state.wave*3)){spawnEnemy(state.spawnQueue.shift()||'basic');state.waveEnemiesLeft--;state.spawnTimer=0;}
+  }
+  if(state.upgrades.regen>1){
+    state.regenTimer++;
+    if(state.regenTimer>=state.regenCooldown){state.regenTimer=0;const amt=getRegenAmount();if(amt>0&&state.tower.hp<state.tower.maxHp){state.tower.hp=Math.min(state.tower.maxHp,state.tower.hp+amt);state.regenAnim=50;triggerRegenAnim(cx,cy);}}
+    if(state.regenAnim>0)state.regenAnim--;
+  }
+  const am=getArmorMult();
+  const ATTACK_DAMAGE=0.8;
+
+  // Run separation passes multiple times to properly resolve overlaps
+  const SEP_PASSES=5;
+  for(let pass=0;pass<SEP_PASSES;pass++){
+    for(let i=0;i<state.enemies.length;i++){
+      const e=state.enemies[i];
+      // Separate from other enemies
+      for(let j=i+1;j<state.enemies.length;j++){
+        const o=state.enemies[j];
+        const ox=e.x-o.x, oy=e.y-o.y;
+        const od=Math.hypot(ox,oy);
+        const minD=e.size+o.size;
+        if(od<minD&&od>0.001){
+          const overlap=(minD-od)/2;
+          const nx=ox/od, ny=oy/od;
+          e.x+=nx*overlap;
+          e.y+=ny*overlap;
+          o.x-=nx*overlap;
+          o.y-=ny*overlap;
+        }
+      }
+      // Keep enemies outside the tower
+      const ex=e.x-cx, ey=e.y-cy, ed=Math.hypot(ex,ey);
+      const minTower=state.tower.size+e.size;
+      if(ed<minTower&&ed>0.001){
+        e.x=cx+(ex/ed)*minTower;
+        e.y=cy+(ey/ed)*minTower;
+      }
+    }
+  }
+
+  for(const e of state.enemies){
+    e.animT++;
+    const dx=cx-e.x, dy=cy-e.y, dist=Math.hypot(dx,dy);
+    const stopDist=state.tower.size+e.size;
+
+    e.angle=Math.atan2(cy-e.y,cx-e.x);
+
+    if(dist>stopDist+0.5){
+      e.attacking=false;
+      e.x+=(dx/dist)*e.speed;
+      e.y+=(dy/dist)*e.speed;
+    } else {
+      e.attacking=true;
+      e.attackTimer+=e.attackSpeed/60;
+      if(e.attackTimer>=1){
+        e.attackTimer=0;
+        state.tower.hp-=ATTACK_DAMAGE*e.damageMult*am;
+        spawnParticles(cx,cy,'#cc3322',2,1.5);
+        if(state.tower.hp<=0){triggerGameOver();return;}
+
+        // Blue Flame thorns — deal % of enemy maxHp on hit
+        const thorns=getThornsPercent();
+        if(thorns>0){
+          const reflected=e.maxHp*thorns;
+          e.hp-=reflected;
+          e.burning=true;
+          e.burnTimer=120; // 2 seconds of burn visual
+          spawnFlameParticles(e.x,e.y);
+          if(e.hp<=0){
+            // enemy killed by thorns — award gold/power as normal kill
+            const gold=getGoldPerKill(e),pow=getPowerPerKill(e);
+            state.coins+=Math.round(gold);state.score+=Math.round(gold)*2;logGold(Math.round(gold));
+            if(pow>0){const rp=Math.floor(pow);if(rp>0){persistent.power+=rp;state.powerEarned+=rp;logPower(rp);saveGame();}}
+            spawnParticles(e.x,e.y,'#4080ff',12,3);
+            spawnParticles(e.x,e.y,'#80c0ff',8,2);
+          }
+        }
+      }
+    }
+  }
+  state.shootTimer++;
+  if(state.shootTimer>=getFireRate()){const t=findTarget();if(t){shootAt(t);state.shootTimer=0;}}
+  for(const b of state.bullets){b.x+=b.vx;b.y+=b.vy;b.life--;}
+  for(const b of state.bullets){
+    if(b.life<=0)continue;
+    for(const e of state.enemies){
+      if(e.hp<=0)continue;
+      if(Math.hypot(b.x-e.x,b.y-e.y)<e.size+4){
+        e.hp-=b.dmg;b.life=0;spawnParticles(e.x,e.y,'#f0c040',4);
+        if(e.hp<=0){
+          const gold=getGoldPerKill(e),pow=getPowerPerKill(e);
+          state.coins+=Math.round(gold);state.score+=Math.round(gold)*2;logGold(Math.round(gold));
+          if(pow>0){const rp=Math.floor(pow);if(rp>0){persistent.power+=rp;state.powerEarned+=rp;logPower(rp);spawnParticles(e.x,e.y,'#c080f0',10,3);saveGame();}}
+          spawnParticles(e.x,e.y,'#cc9922',8);if(e.type==='heavy')spawnParticles(e.x,e.y,'#e0e0e0',5);
+          updateHUD();
+        }
+        break;
+      }
+    }
+  }
+  updateRegenParticles();
+  updateFlameParticles();
+  state.flameT++;
+  state.bullets=state.bullets.filter(b=>b.life>0);
+  state.enemies=state.enemies.filter(e=>e.hp>0);
+  for(const p of state.particles){p.x+=p.vx;p.y+=p.vy;p.life--;}
+  state.particles=state.particles.filter(p=>p.life>0);
+  if(state.waveActive&&state.waveEnemiesLeft===0&&state.enemies.length===0){
+    state.waveActive=false;state.wave++;
+    const bonus=getWaveBonus();state.coins+=bonus;logGold(bonus);
+    state.betweenWave=true;state.betweenTimer=180;
+    showBanner('Wave Complete! +'+bonus+' gold');updateHUD();
+  }
+  updateRates();updateHUD();
+}
+
+function triggerGameOver(){
+  state.gameOver=true;
+  document.getElementById('go-waves').textContent=state.wave-1;
+  document.getElementById('go-score').textContent=state.score;
+  document.getElementById('go-power').textContent=state.powerEarned;
+  document.getElementById('game-over').style.display='flex';
+}
+
+// ===================== DRAW =====================
+function drawRegenParticles(cx,cy){
+  for(const p of state.regenParticles){
+    const al=p.life/p.maxLife,s=p.size*(0.5+al*0.5);
+    ctx.globalAlpha=al;ctx.fillStyle=p.color;
+    ctx.beginPath();ctx.moveTo(p.x,p.y-s);ctx.lineTo(p.x+s*0.6,p.y);ctx.lineTo(p.x,p.y+s);ctx.lineTo(p.x-s*0.6,p.y);ctx.closePath();ctx.fill();
+    ctx.globalAlpha=al*0.3;ctx.beginPath();ctx.arc(p.x,p.y,s*2,0,Math.PI*2);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  if(state.regenAnim>40){const prog=(state.regenAnim-40)/10;ctx.globalAlpha=prog*0.7;ctx.strokeStyle='#60ff90';ctx.lineWidth=3;ctx.beginPath();ctx.arc(canvas.width/2,canvas.height/2,22+prog*20,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;}
+}
+function drawRange(cx,cy){
+  const r=getRange();
+  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.strokeStyle='rgba(80,80,80,0.5)';ctx.lineWidth=1.5;ctx.setLineDash([8,8]);ctx.stroke();ctx.setLineDash([]);
+}
+function drawArcher(cx,cy,aim){
+  ctx.save();ctx.translate(cx,cy);
+  ctx.fillStyle='rgba(0,0,0,0.25)';ctx.beginPath();ctx.ellipse(2,6,14,6,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#3a2a6a';ctx.beginPath();ctx.arc(0,0,14,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#4a3a8a';ctx.beginPath();ctx.arc(-3,-3,8,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#6a50a0';ctx.lineWidth=1;ctx.beginPath();ctx.arc(0,0,14,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle='#2a1a4a';ctx.beginPath();ctx.arc(0,-2,7,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#d4a060';ctx.beginPath();ctx.arc(0,-2,4,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(255,220,80,0.9)';ctx.beginPath();ctx.arc(-1.5,-2.5,1,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(1.5,-2.5,1,0,Math.PI*2);ctx.fill();
+  ctx.save();ctx.rotate(aim);
+  ctx.strokeStyle='#8b5e1a';ctx.lineWidth=2;ctx.beginPath();ctx.arc(10,0,7,Math.PI*0.6,-Math.PI*0.6);ctx.stroke();
+  ctx.strokeStyle='rgba(240,220,160,0.7)';ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(10-7*Math.sin(Math.PI*0.6),7*Math.cos(Math.PI*0.6));ctx.lineTo(8,0);ctx.lineTo(10-7*Math.sin(Math.PI*0.6),-7*Math.cos(Math.PI*0.6));ctx.stroke();
+  ctx.strokeStyle='#c09040';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(4,0);ctx.lineTo(16,0);ctx.stroke();
+  ctx.restore();
+  ctx.strokeStyle='rgba(200,160,60,0.5)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,16,0,Math.PI*2);ctx.stroke();
+  ctx.restore();
+}
+function drawEnemy(e){
+  ctx.beginPath();ctx.arc(e.x,e.y,e.size,0,Math.PI*2);
+  ctx.fillStyle=e.type==='heavy'?'#d0c8b0':'#e8e4d8';ctx.fill();
+  if(e.type==='heavy'){ctx.strokeStyle='#1a1a1a';ctx.lineWidth=3;ctx.stroke();}
+}
+function drawBullet(b){
+  ctx.save();ctx.translate(b.x,b.y);ctx.rotate(b.angle);
+  ctx.strokeStyle='#c09040';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(-8,0);ctx.lineTo(6,0);ctx.stroke();
+  ctx.fillStyle='#a0b0c0';ctx.beginPath();ctx.moveTo(6,0);ctx.lineTo(10,-2);ctx.lineTo(10,2);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#cc4422';ctx.beginPath();ctx.moveTo(-8,0);ctx.lineTo(-11,-3);ctx.lineTo(-6,0);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(-8,0);ctx.lineTo(-11,3);ctx.lineTo(-6,0);ctx.closePath();ctx.fill();
+  ctx.restore();
+}
+function draw(){
+  ctx.fillStyle='#000';ctx.fillRect(0,0,canvas.width,canvas.height);
+  const cx=canvas.width/2,cy=canvas.height/2;
+  drawRange(cx,cy);
+  for(const p of state.particles){ctx.globalAlpha=Math.max(0,p.life/35);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();}
+  ctx.globalAlpha=1;
+  for(const e of state.enemies)drawEnemy(e);
+  drawFlameParticles();
+  drawRegenParticles(cx,cy);
+  for(const b of state.bullets)drawBullet(b);
+  const tgt=findTarget(),aim=tgt?Math.atan2(tgt.y-cy,tgt.x-cx):state._lastAim||0;
+  if(tgt)state._lastAim=aim;
+  ctx.fillStyle='rgba(80,50,10,0.6)';ctx.beginPath();ctx.arc(cx,cy,22,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#8b6914';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,22,0,Math.PI*2);ctx.stroke();
+  drawArcherFlame(cx,cy,state.flameT);
+  drawArcher(cx,cy,aim);
+  if(state.betweenWave){const s=Math.ceil(state.betweenTimer/60);ctx.fillStyle='rgba(240,192,64,0.9)';ctx.font='bold 13px Segoe UI';ctx.textAlign='center';ctx.fillText('Next wave in '+s+'s',cx,cy+45);ctx.textAlign='left';}
+}
+
+// ===================== LOOP =====================
+function loop(){
+  const ticks=gameSpeed===0?0:gameSpeed;
+  for(let i=0;i<ticks;i++)update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// ===================== BOOT =====================
+loadGame();
+buildUpgradeTabs();
+initState();
+state.betweenWave=true;state.betweenTimer=120;
+updateHUD();updateUpgradeButtons();
+requestAnimationFrame(loop);
 </script>
+</body>
+</html>

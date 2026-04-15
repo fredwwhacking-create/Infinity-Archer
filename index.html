@@ -6,7 +6,56 @@
 <title>Desert Archer</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
-body{background:#000;color:#f0e6c8;font-family:'Segoe UI',Arial,sans-serif;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+body{background:#000;color:#f0e6c8;font-family:'Segoe UI',Arial,sans-serif;display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+/* ---- Mobile scaling ---- */
+@media(max-width:600px){
+  #hud{padding:4px 8px;gap:4px;}
+  #hud-title{font-size:10px;letter-spacing:1px;}
+  .stat{padding:2px 6px;}
+  .stat label{font-size:8px;}
+  .stat span{font-size:11px;}
+  #speed-bar label{font-size:8px;}
+  .spd-btn{font-size:9px;padding:2px 5px;}
+  #rates-panel{top:36px;}
+  .rate-pill{padding:3px 7px;}
+  .rp-label{font-size:8px;}
+  .rp-val{font-size:11px;min-width:32px;}
+  .rate-bar-bg{width:40px;}
+  #health-strip{padding:4px 10px;}
+  #health-strip label{font-size:9px;}
+  #health-strip-text{font-size:10px;min-width:60px;}
+  #health-strip-bar-bg{height:10px;}
+  #upgrade-panel{height:44vh;}
+  #tab-bar .tab-btn{font-size:10px;padding:7px 2px;letter-spacing:.3px;}
+  #upg-multi-bar{padding:4px 8px;gap:4px;}
+  #upg-multi-bar label{font-size:9px;}
+  .multi-btn{font-size:10px;padding:3px 8px;}
+  .tab-content{padding:6px;}
+  .tab-content.active{grid-template-columns:repeat(2,1fr);gap:6px;}
+  .upg-card{padding:10px 6px;gap:4px;}
+  .uc-icon{font-size:18px;}
+  .uc-name{font-size:12px;}
+  .uc-cost{font-size:11px;}
+  .uc-lvl{font-size:10px;}
+  .uc-ws{font-size:9px;}
+  /* Workshop mobile */
+  .ws-grid{grid-template-columns:repeat(2,1fr);gap:6px;}
+  .wc-icon{font-size:20px;}
+  .wc-name{font-size:12px;}
+  .wc-desc{font-size:10px;}
+  .wc-effect{font-size:11px;}
+  .wc-cost{font-size:11px;}
+  .wc-lvl{font-size:10px;}
+  .ws-section-title{font-size:11px;}
+  .ws-power-row{padding:5px 14px;}
+  .pw-val{font-size:16px;}
+  .ws-multi-bar{gap:4px;}
+  .ws-multi-btn{font-size:10px;padding:3px 8px;}
+  .big-btn{padding:8px 18px;font-size:12px;}
+  .panel-box{padding:18px 20px;}
+  .panel-box h2{font-size:16px;}
+  .go-stat-box .val{font-size:18px;}
+}
 #hud{width:100%;display:flex;justify-content:space-between;align-items:center;padding:5px 12px;background:linear-gradient(180deg,#2a1a08,#1e1206);border-bottom:1px solid #8b6914;z-index:10;gap:6px;flex-shrink:0;}
 .hud-group{display:flex;gap:6px;align-items:center;}
 .stat{display:flex;align-items:center;gap:4px;background:rgba(0,0,0,0.4);padding:3px 10px;border-radius:20px;border:1px solid #5a4010;}
@@ -117,20 +166,6 @@ canvas{width:100%;height:100%;display:block;}
 .ws-card.ws-maxed .wc-lvl{color:#ffd040;font-weight:700;}
 .ws-btn-row{display:flex;justify-content:center;gap:12px;margin-top:16px;}
 </style>
-     <!-- PWA — paste here -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen">
-    <meta name="apple-mobile-web-app-title" content="Infinity Archer">
-    <meta name="mobile-web-app-capable" content="yes">
-    <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="icon-192.png">
-    <script>
-      if('serviceWorker' in navigator){
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/Infinity-Archer/sw.js');
-        });
-      }
-    </script>
 </head>
 <body>
 <div id="hud">
@@ -250,11 +285,19 @@ function wsAffordableCount(key,maxCount){
 }
 
 // ===================== SAVE / LOAD =====================
-const SAVE_KEY='desert_archer_save';
-function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(persistent));}catch(e){}}
+const SAVE_KEY='infinity_archer_save';
+function saveGame(){
+  try{
+    const data=JSON.stringify(persistent);
+    localStorage.setItem(SAVE_KEY,data);
+    // Belt-and-braces: also write to sessionStorage as fallback
+    sessionStorage.setItem(SAVE_KEY,data);
+  }catch(e){console.warn('Save failed',e);}
+}
 function loadGame(){
   try{
-    const raw=localStorage.getItem(SAVE_KEY);
+    // Try localStorage first, fall back to sessionStorage
+    const raw=localStorage.getItem(SAVE_KEY)||sessionStorage.getItem(SAVE_KEY);
     if(raw){
       const d=JSON.parse(raw);
       persistent.power=d.power??0;
@@ -262,11 +305,11 @@ function loadGame(){
       for(const k of Object.keys(persistent.wsCosts))persistent.wsCosts[k]=d.wsCosts?.[k]??persistent.wsCosts[k];
       showToast('Save loaded ✓');
     }
-  }catch(e){}
+  }catch(e){console.warn('Load failed',e);}
 }
 function resetSave(){
   if(!confirm('Reset ALL workshop progress and Power?'))return;
-  localStorage.removeItem(SAVE_KEY);
+  try{localStorage.removeItem(SAVE_KEY);sessionStorage.removeItem(SAVE_KEY);}catch(e){}
   persistent={power:0,
     wsLevels:{damage:0,firerate:0,range:0,multishot:0,maxhp:0,armor:0,regen:0,thorns:0,goldkill:0,powerkill:0,waveBonus:0},
     wsCosts:{damage:20,firerate:20,range:20,multishot:30,maxhp:20,armor:25,regen:30,thorns:30,goldkill:18,powerkill:35,waveBonus:22}};

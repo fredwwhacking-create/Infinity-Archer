@@ -1,10 +1,11 @@
 {
-  "name": "Desert Archer",
-  "short_name": "Desert Archer",
+  "name": "Infinity Archer",
+  "short_name": "Infinity Archer",
   "description": "Endless tower defence — defend your archer against waves of skeleton warriors",
-  "start_url": "/",
+  "start_url": "/Infinity-Archer/",
+  "scope": "/Infinity-Archer/",
   "display": "fullscreen",
-  "orientation": "landscape",
+  "orientation": "portrait-primary",
   "background_color": "#000000",
   "theme_color": "#1e1206",
   "icons": [
